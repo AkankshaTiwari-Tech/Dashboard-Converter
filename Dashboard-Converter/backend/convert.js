@@ -1,39 +1,46 @@
-const XLSX = require("xlsx");
-const downloadExcel = require("./services/driveService");
+const Papa = require("papaparse");
+const downloadConsolidated = require("./services/driveService");
 
 async function convertExcel() {
-    const buffer = await downloadExcel();
+    const csv = await downloadConsolidated();
 
-    const workbook = XLSX.read(buffer, {
-        type: "buffer",
-        cellDates: true
-    });
-
-    // Use ONLY the Consolidated sheet.
-    const sheetName = workbook.SheetNames.find(
-        name => name.trim().toLowerCase() === "consolidated"
-    );
-
-    if (!sheetName) {
-        throw new Error("Consolidated sheet not found in workbook.");
+    if (!csv || !String(csv).trim()) {
+        throw new Error("Consolidated sheet returned no data.");
     }
 
-    const worksheet = workbook.Sheets[sheetName];
+    const parsed = Papa.parse(csv, {
+        header: true,
+        skipEmptyLines: true,
+        transformHeader: header => {
+            let cleaned = String(header ?? "")
+                .replace(/^\uFEFF/, "")
+                .trim();
 
-    if (!worksheet) {
-        throw new Error("Consolidated worksheet could not be opened.");
+            // Google Sheets may export the first header as:
+            // "Sr. No. #REF!"
+            // Convert it back to the expected header name.
+            if (/^Sr\.\s*No\.\s*#REF!$/i.test(cleaned)) {
+                cleaned = "Sr. No.";
+            }
+
+            return cleaned;
+        }
+    });
+
+    if (parsed.errors && parsed.errors.length > 0) {
+        console.error("CSV parsing errors:", parsed.errors);
+
+        throw new Error(
+            `Could not parse Consolidated sheet: ${parsed.errors[0].message}`
+        );
     }
 
-    // Read the Consolidated sheet as normal JSON rows.
-    let rows = XLSX.utils.sheet_to_json(worksheet, {
-        defval: "",
-        raw: true
-    });
+    let rows = parsed.data || [];
 
     // Remove completely empty rows.
     rows = rows.filter(row =>
         Object.values(row).some(value =>
-            String(value).trim() !== ""
+            String(value ?? "").trim() !== ""
         )
     );
 

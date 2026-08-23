@@ -1,17 +1,24 @@
 const axios = require("axios");
 require("dotenv").config();
 
-async function downloadExcel() {
+async function downloadConsolidated() {
     const fileId = process.env.DRIVE_FILE_ID;
 
+    if (!fileId) {
+        throw new Error("DRIVE_FILE_ID is missing from .env");
+    }
+
+    const encodedSheetName = encodeURIComponent("Consolidated");
+
     const downloadUrl =
-        `https://docs.google.com/spreadsheets/d/${fileId}/export?format=xlsx`;
+        `https://docs.google.com/spreadsheets/d/${fileId}/gviz/tq` +
+        `?tqx=out:csv&sheet=${encodedSheetName}`;
 
     const response = await axios.get(downloadUrl, {
-        responseType: "arraybuffer"
+        responseType: "text"
     });
 
-    return Buffer.from(response.data);
+    return response.data;
 }
 
-module.exports = downloadExcel;
+module.exports = downloadConsolidated;
