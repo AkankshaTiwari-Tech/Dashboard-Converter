@@ -30,6 +30,10 @@
     --font-display:'Source Serif 4', Georgia, serif;
     --font-body:'IBM Plex Sans', -apple-system, sans-serif;
     --font-mono:'IBM Plex Mono', 'Courier New', monospace;
+    #filteredCountWrap {
+  margin-top: 6px;
+  min-height: 18px;
+}
   }
   *{box-sizing:border-box; margin:0; padding:0;}
   html,body{background:var(--bg); color:var(--ink); font-family:var(--font-body); scroll-behavior:smooth;}
@@ -254,7 +258,9 @@
       </div>
       <div class="reset" id="resetFilters">Reset filters</div>
     </div>
-    <div style="margin-top:10px;"><span id="filteredCount"></span></div>
+    <div id="filteredCountWrap">
+  <span id="filteredCount"></span>
+</div>
   </section>
 
   <section id="roster">
@@ -396,19 +402,28 @@ async function loadDashboardData() {
 
       incharge: row["Mentor Name"] || "",
 
-      kpis: [
-        Number(row["Fundamental\n(10)"] || 0),
-        Number(row["Core/Technical \n(10)"] || 0),
-        Number(row["Communication \n(10)"] || 0),
-        Number(row["Soft & Life Skills\n(10)"] || 0)
-      ],
+kpis: [
+  Number(row["Fundamental\n(10)"] || 0),
+  Number(row["Core/Technical \n(10)"] || 0),
+  Number(
+    row["Communication \n(10) "] ??
+    row["Communication \n(10)"] ??
+    0
+  ),
+  Number(row["Soft & Life Skills\n(10)"] || 0)
+],
 
-      overall: Number(row["Total (40)"] || 0) / 8,
+overall: Number(row["Total (40)"] || 0) / 8,
 
-      welcomed: "Yes",
-      ta: row["TA/Group Member"] === "TA" ? "Yes" : "No",
+welcomed: "Yes",
 
-      suggestion: ""
+ta: String(row["TA/Group Member"] || "")
+  .trim()
+  .toLowerCase() === "ta"
+  ? "Yes"
+  : "No",
+
+suggestion: ""
     }));
 
     selectedIncharge = null;
@@ -784,7 +799,7 @@ function renderComments(){
 }
 
 function renderFilteredCount(){
-  const total = EMBEDDED.records.length;
+  const total = RECORDS.length;
   const shown = filteredRecords().length;
   document.getElementById('filteredCount').textContent = `Showing ${shown} of ${total} responses`;
 }
