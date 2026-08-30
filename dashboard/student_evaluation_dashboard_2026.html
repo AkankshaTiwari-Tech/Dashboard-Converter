@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Evaluation — Flipped Classroom System 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="./dashboard-data.js"></script>
+
+<style>
+:root{
+  --bg:#0F1420; --bg2:#0B0F18; --panel:#171F2E; --panel2:#1C2536;
+  --rule:rgba(237,234,227,.10); --rule2:rgba(237,234,227,.18);
+  --ink:#EEEAE1; --dim:#9CA6B8; --faint:#687285;
+  --brass:#CBA135; --brassSoft:rgba(203,161,53,.14);
+  --sage:#7FAE8B; --amber:#D6A94A; --coral:#DD6B55;
+  --serif:'Source Serif 4',Georgia,serif;
+  --sans:'IBM Plex Sans',sans-serif; --mono:'IBM Plex Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  min-height:100vh;background:
+  repeating-linear-gradient(0deg,transparent,transparent 37px,var(--rule) 37px,var(--rule) 38px),
+  linear-gradient(180deg,var(--bg2),var(--bg) 260px);
+  color:var(--ink);font-family:var(--sans);padding-bottom:60px;
+}
+header{
+  padding:36px 5vw 25px;border-bottom:1px solid var(--rule2);
+  display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap
+}
+.eyebrow{
+  font:11px var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--brass);
+  display:flex;align-items:center;gap:10px;margin-bottom:10px
+}
+.eyebrow:before{content:"";width:22px;height:1px;background:var(--brass)}
+h1{font:600 clamp(29px,4vw,45px)/1.05 var(--serif);letter-spacing:-.01em}
+.subtitle{color:var(--dim);font-size:14px;line-height:1.55;max-width:720px;margin-top:10px}
+.head-actions{display:flex;flex-direction:column;align-items:flex-end;gap:9px}
+button,.file-label{
+  font:11px var(--mono);text-transform:uppercase;letter-spacing:.04em;
+  color:var(--brass);background:var(--brassSoft);border:1px solid var(--brass);
+  padding:10px 15px;border-radius:4px;cursor:pointer
+}
+button:hover,.file-label:hover{background:var(--brass);color:#15110a}
+#fileInput{display:none}
+#status{font:10px var(--mono);color:var(--faint);min-height:14px}
+main{max-width:1380px;margin:auto;padding:0 5vw}
+section{margin-top:48px}
+.section-head{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.section-head h2{font:600 22px var(--serif)}
+.section-num{font:13px var(--mono);color:var(--brass);margin-right:10px}
+.note{font-size:12px;color:var(--faint);max-width:520px;text-align:right}
+
+/* hero */
+.hero{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--rule2);border:1px solid var(--rule2);border-radius:7px;overflow:hidden}
+.stat{background:var(--panel);padding:22px;min-height:145px}
+.stat-label{font:10px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:12px}
+.stat-value{font:600 35px var(--serif);line-height:1}
+.stat-value small{font:14px var(--sans);font-weight:400;color:var(--dim)}
+.stat-note{font-size:11px;color:var(--faint);margin-top:9px}
+.ringbox{display:flex;align-items:center;gap:14px}
+.ring{width:76px;height:76px;flex:0 0 76px;position:relative}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:7}
+.ring-bg{stroke:var(--rule2)}
+.ring-fill{stroke:var(--brass);stroke-linecap:round;transition:stroke-dashoffset .5s ease}
+.ring-fill.sage{stroke:var(--sage)}
+.ring-fill.coral{stroke:var(--coral)}
+.ring-center{position:absolute;inset:0;display:grid;place-items:center;font:600 16px var(--mono)}
+.ring-title{font:600 20px var(--serif)}
+.ring-caption{font-size:11px;color:var(--faint);margin-top:3px}
+
+/* filters */
+.filterbox{background:var(--panel);border:1px solid var(--rule2);border-radius:7px;padding:18px}
+.filters{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:10px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label,.slider-label{
+  font:10px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--faint)
+}
+select,input[type=text]{
+  width:100%;background:var(--panel2);border:1px solid var(--rule2);color:var(--ink);
+  padding:9px 10px;border-radius:4px;outline:none;font:12px var(--sans)
+}
+select:focus,input:focus{border-color:var(--brass)}
+.filter-bottom{display:grid;grid-template-columns:1fr auto;gap:24px;align-items:end;margin-top:18px}
+.range-wrap{min-width:0}
+.range-values{display:flex;justify-content:space-between;margin-top:5px;font:10px var(--mono);color:var(--dim)}
+input[type=range]{
+  width:100%;height:5px;appearance:none;background:linear-gradient(90deg,var(--brass),var(--sage));
+  border-radius:10px;outline:none
+}
+input[type=range]::-webkit-slider-thumb{
+  appearance:none;width:16px;height:16px;border-radius:50%;background:var(--ink);border:2px solid var(--brass);cursor:pointer
+}
+input[type=range]::-moz-range-thumb{
+  width:16px;height:16px;border-radius:50%;background:var(--ink);border:2px solid var(--brass);cursor:pointer
+}
+.reset{background:transparent;color:var(--faint);border:1px solid var(--rule2)}
+.reset:hover{background:transparent;color:var(--coral);border-color:var(--coral)}
+.count{font:11px var(--mono);color:var(--brass);margin-top:10px}
+
+/* mentor cards */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:13px}
+.card{background:var(--panel);border:1px solid var(--rule2);border-radius:7px;padding:19px;transition:.15s}
+.card:hover{border-color:var(--brass)}
+.card-top{display:flex;justify-content:space-between;gap:12px}
+.card h3{font:600 17px var(--serif);line-height:1.25}
+.meta{font:10px var(--mono);color:var(--faint);margin-top:5px}
+.score{text-align:right;flex:0 0 auto}
+.score b{font:600 22px var(--mono)}
+.score small{display:block;font:9px var(--mono);color:var(--faint);text-transform:uppercase}
+.mini-rings{display:flex;gap:10px;margin:17px 0 13px}
+.mini-ring{position:relative;width:55px;height:55px}
+.mini-ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.mini-ring circle{fill:none;stroke-width:5}
+.mini-ring .bg{stroke:var(--rule2)}
+.mini-ring .fg{stroke:var(--brass);stroke-linecap:round}
+.mini-ring .fg.good{stroke:var(--sage)}
+.mini-ring .fg.warn{stroke:var(--amber)}
+.mini-ring .fg.low{stroke:var(--coral)}
+.mini-ring span{position:absolute;inset:0;display:grid;place-items:center;font:9px var(--mono)}
+.mini-labels{display:flex;gap:10px;font:8px var(--mono);color:var(--faint);text-transform:uppercase}
+.progress-row{display:grid;grid-template-columns:86px 1fr 38px;gap:9px;align-items:center;margin-top:9px;font-size:10px;color:var(--dim)}
+.progress{height:7px;background:var(--rule);border-radius:5px;overflow:hidden}
+.progress i{display:block;height:100%;border-radius:5px;background:var(--brass)}
+.progress i.good{background:var(--sage)} .progress i.warn{background:var(--amber)} .progress i.low{background:var(--coral)}
+.card-foot{display:flex;justify-content:space-between;border-top:1px solid var(--rule);padding-top:11px;margin-top:13px;font:10px var(--mono);color:var(--faint)}
+.card-foot b{color:var(--dim);font-weight:500}
+
+/* overview panel */
+.overview-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:14px}
+.panel{background:var(--panel);border:1px solid var(--rule2);border-radius:7px;padding:22px}
+.panel-title{font:600 17px var(--serif);margin-bottom:16px}
+.chart-box{height:330px}
+.legend{font:10px var(--mono);color:var(--faint);text-align:center;margin-top:8px}
+
+/* student table */
+.table-panel{background:var(--panel);border:1px solid var(--rule2);border-radius:7px;overflow:hidden}
+.table-scroll{overflow:auto;max-height:570px}
+table{width:100%;border-collapse:collapse;min-width:1080px}
+th{
+  position:sticky;top:0;z-index:2;background:var(--panel2);color:var(--faint);
+  font:9px var(--mono);letter-spacing:.07em;text-transform:uppercase;text-align:left;padding:11px;border-bottom:1px solid var(--rule2)
+}
+td{padding:11px;border-bottom:1px solid var(--rule);font-size:11px;color:var(--dim)}
+tbody tr:hover{background:rgba(255,255,255,.025)}
+.student{color:var(--ink);font-weight:600}
+.badge{display:inline-block;padding:3px 7px;border-radius:12px;font:9px var(--mono)}
+.badge.ta{color:var(--brass);background:var(--brassSoft)}
+.badge.member{color:var(--dim);background:rgba(156,166,184,.08)}
+.total{font:600 12px var(--mono)}
+.total.good{color:var(--sage)} .total.warn{color:var(--amber)} .total.low{color:var(--coral)}
+.table-tools{display:flex;gap:10px;flex-wrap:wrap;padding:15px;border-bottom:1px solid var(--rule)}
+.table-tools input{max-width:340px}
+.empty{text-align:center;color:var(--faint);padding:40px;font-size:13px}
+
+/* tooltip/detail */
+.detail{display:none;margin-top:14px;background:var(--panel2);border:1px solid var(--brass);border-radius:7px;padding:20px}
+.detail.open{display:block}
+.detail-head{display:flex;justify-content:space-between;gap:20px;margin-bottom:16px}
+.detail h3{font:600 21px var(--serif)}
+.close{font:10px var(--mono);color:var(--faint);cursor:pointer}
+.close:hover{color:var(--coral)}
+.detail-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.detail-metric{border:1px solid var(--rule);padding:13px;border-radius:5px}
+.detail-metric label{font:9px var(--mono);color:var(--faint);text-transform:uppercase}
+.detail-metric b{display:block;font:600 21px var(--mono);margin-top:6px}
+
+/* footer */
+footer{margin-top:65px;padding:24px 5vw;border-top:1px solid var(--rule2);display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;font:10px var(--mono);color:var(--faint)}
+
+@media(max-width:1000px){
+  .hero{grid-template-columns:repeat(3,1fr)}
+  .filters{grid-template-columns:repeat(3,1fr)}
+  .overview-grid{grid-template-columns:1fr}
+  .detail-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:650px){
+  header{padding:27px 5vw}
+  .hero{grid-template-columns:1fr}
+  .filters{grid-template-columns:1fr}
+  .filter-bottom{grid-template-columns:1fr}
+  .cards{grid-template-columns:1fr}
+  .note{text-align:left}
+  .head-actions{align-items:flex-start}
+}
+</style>
+</head>
+
+<body>
+<header>
+  <div>
+    <div class="eyebrow">Academic Analytics · Flipped Classroom System</div>
+    <h1>Student Evaluation Dashboard</h1>
+    <p class="subtitle">Performance across Fundamental, Core / Technical, Communication and Soft &amp; Life Skills — presented as interactive score rings, progress bars, rating sliders and student-level records.</p>
+  </div>
+  <div class="head-actions">
+    <label class="file-label" for="fileInput">Load updated Excel</label>
+    <input id="fileInput" type="file" accept=".xlsx,.xls">
+    <div id="status">Embedded workbook: Consolidated sheet</div>
+  </div>
+</header>
+
+<main>
+  <section>
+    <div class="hero" id="hero"></div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2><span class="section-num">01</span>Filters &amp; score range</h2>
+      <div class="note">Use the slider to focus on a Total (40) range. Every card and table below responds to the selected filters.</div>
+    </div>
+    <div class="filterbox">
+      <div class="filters">
+        <div class="field"><label>Programme</label><select id="programme"></select></div>
+        <div class="field"><label>Semester</label><select id="semester"></select></div>
+        <div class="field"><label>Section</label><select id="section"></select></div>
+        <div class="field"><label>Course</label><select id="course"></select></div>
+        <div class="field"><label>Mentor</label><select id="mentor"></select></div>
+        <div class="field"><label>Role</label><select id="role"></select></div>
+      </div>
+      <div class="filter-bottom">
+        <div class="range-wrap">
+          <div class="slider-label">Minimum Total Score — <span id="minScoreText">0</span> / 40</div>
+          <input id="scoreRange" type="range" min="0" max="40" step="1" value="0">
+          <div class="range-values"><span>0</span><span>10</span><span>20</span><span>30</span><span>40</span></div>
+        </div>
+        <button class="reset" id="reset">Reset all filters</button>
+      </div>
+      <div class="count" id="count"></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2><span class="section-num">02</span>Mentor / course performance</h2>
+      <div class="note">Round bars show category scores out of 10; horizontal progress bars show the same dimensions as percentage completion.</div>
+    </div>
+    <div class="cards" id="cards"></div>
+    <div class="detail" id="detail"></div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2><span class="section-num">03</span>Score distribution &amp; category profile</h2>
+      <div class="note">Charts are calculated from the filtered workbook records.</div>
+    </div>
+    <div class="overview-grid">
+      <div class="panel">
+        <div class="panel-title">Category averages</div>
+        <div class="chart-box"><canvas id="categoryChart"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Total score distribution</div>
+        <div class="chart-box"><canvas id="distributionChart"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2><span class="section-num">04</span>Student evaluations</h2>
+      <div class="note">Click a row to open the four category scores and total score.</div>
+    </div>
+    <div class="table-panel">
+      <div class="table-tools">
+        <input id="studentSearch" type="text" placeholder="Search student, UID, course, mentor…">
+        <select id="sort">
+          <option value="total-desc">Highest total first</option>
+          <option value="total-asc">Lowest total first</option>
+          <option value="name">Student name A–Z</option>
+          <option value="date">Latest date first</option>
+        </select>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Student</th><th>UID</th><th>Programme</th><th>Sem</th><th>Sec</th>
+              <th>Course</th><th>Mentor</th><th>Role</th><th>Fundamental</th>
+              <th>Technical</th><th>Communication</th><th>Soft &amp; Life</th><th>Total</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div id="empty" class="empty" style="display:none">No records match the current filters.</div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <span>Source workbook: Student Evaluation (Flipped Class Room System 2026) · Consolidated sheet</span>
+  <span>Scores shown exactly on the workbook's 10-point category / 40-point total scale.</span>
+</footer>
+
+<script>
+const INITIAL_DATA = window.DASHBOARD_DATA || [];
+let records = INITIAL_DATA.slice();
+function n(v){ const x = Number(v); return Number.isFinite(x) ? x : 0; }
+function avg(a){ return a.length ? a.reduce((x,y)=>x+y,0)/a.length : 0; }
+function fmt(x){ return (Math.round(x*10)/10).toFixed(1); }
+function esc(v){
+  return String(v ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+}
+function scoreClass(v){ return v >= 30 ? "good" : v >= 20 ? "warn" : "low"; }
+function scoreColor(v){ return v >= 7.5 ? "good" : v >= 5 ? "warn" : "low"; }
+
+function unique(key){
+  return [...new Set(records.map(r => r[key]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true}));
+}
+function populateSelect(id,key){
+  const el=$(id), old=el.value;
+  el.innerHTML='<option value="ALL">All</option>'+unique(key).map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join("");
+  if([...el.options].some(o=>o.value===old)) el.value=old;
+}
+function populateFilters(){
+  populateSelect("programme","programme");
+  populateSelect("semester","semester");
+  populateSelect("section","section");
+  populateSelect("course","course");
+  populateSelect("mentor","mentor");
+  populateSelect("role","role");
+}
+
+function getFiltered(){
+  const min=n($("scoreRange").value);
+  return records.filter(r =>
+    fields.every(k => $(k).value==="ALL" || r[k] === $(k).value) &&
+    n(r.total) >= min
+  );
+}
+
+function ring(percent, cls=""){
+  const p=Math.max(0,Math.min(100,percent));
+  const c=2*Math.PI*25;
+  const off=c-(p/100)*c;
+  return `<div class="ring"><svg viewBox="0 0 60 60">
+    <circle class="ring-bg" cx="30" cy="30" r="25"/>
+    <circle class="ring-fill ${cls}" cx="30" cy="30" r="25" stroke-dasharray="${c}" stroke-dashoffset="${off}"/>
+  </svg><div class="ring-center">${Math.round(p)}%</div></div>`;
+}
+
+function miniRing(v){
+  const p=Math.max(0,Math.min(100,(n(v)/10)*100));
+  const c=2*Math.PI*22, off=c-(p/100)*c;
+  return `<div class="mini-ring">
+    <svg viewBox="0 0 54 54"><circle class="bg" cx="27" cy="27" r="22"/>
+    <circle class="fg ${scoreColor(v)}" cx="27" cy="27" r="22" stroke-dasharray="${c}" stroke-dashoffset="${off}"/></svg>
+    <span>${fmt(v)}</span>
+  </div>`;
+}
+
+function renderHero(data){
+  const total=data.length;
+  const avgTotal=avg(data.map(r=>n(r.total)));
+  const maxPossible=40;
+  const completed=data.filter(r=>n(r.total)>0).length;
+  const ta=data.filter(r=>r.role==="TA").length;
+  const high=data.filter(r=>n(r.total)>=32).length;
+
+  // Count unique students in the filtered data.
+  const studentKeys=new Set(
+    data
+      .map(r=>String(r.uid||"").trim() || String(r.student||"").trim())
+      .filter(Boolean)
+  );
+  const totalStudents=studentKeys.size;
+
+  $("hero").innerHTML=`
+    <div class="stat"><div class="stat-label">Evaluations</div><div class="stat-value">${total}<small> records</small></div><div class="stat-note">${completed} with a recorded total score</div></div>
+    <div class="stat"><div class="stat-label">Average total</div><div class="ringbox">${ring(avgTotal/maxPossible*100,avgTotal>=30?"sage":avgTotal>=20?"":"coral")}<div><div class="ring-title">${fmt(avgTotal)} / 40</div><div class="ring-caption">${fmt(avgTotal/4)} / 10 average</div></div></div></div>
+    <div class="stat"><div class="stat-label">High-score share</div><div class="ringbox">${ring(total?high/total*100:"", "sage")}<div><div class="ring-title">${total?Math.round(high/total*100):0}%</div><div class="ring-caption">score ≥ 32 / 40</div></div></div></div>
+    <div class="stat"><div class="stat-label">Total students</div><div class="ringbox">${ring(totalStudents?100:0,"sage")}<div><div class="ring-title">${totalStudents}</div><div class="ring-caption">unique students</div></div></div></div>
+    <div class="stat"><div class="stat-label">TA records</div><div class="stat-value">${ta}<small> students</small></div><div class="stat-note">${total?Math.round(ta/total*100):0}% of filtered records</div></div>`;
+}
+
+function mentorGroups(data){
+  const map=new Map();
+  data.forEach(r=>{
+    const key=r.mentor || "Mentor not recorded";
+    if(!map.has(key)) map.set(key,[]);
+    map.get(key).push(r);
+  });
+  return [...map.entries()].sort((a,b)=>avg(b[1].map(r=>n(r.total)))-avg(a[1].map(r=>n(r.total))));
+}
+
+function renderCards(data){
+  const groups=mentorGroups(data);
+  if(!groups.length){$("cards").innerHTML='<div class="empty">No performance cards available.</div>';return;}
+  $("cards").innerHTML=groups.map(([name,rs],idx)=>{
+    const av=[avg(rs.map(r=>n(r.fundamental))),avg(rs.map(r=>n(r.technical))),avg(rs.map(r=>n(r.communication))),avg(rs.map(r=>n(r.soft)))];
+    const total=avg(rs.map(r=>n(r.total)));
+    const courses=[...new Set(rs.map(r=>r.course).filter(Boolean))];
+    return `<div class="card" onclick="showDetail(${idx})">
+      <div class="card-top"><div><h3>${esc(name)}</h3><div class="meta">${rs.length} evaluation${rs.length!==1?"s":""} · ${courses.length} course${courses.length!==1?"s":""}</div></div>
+      <div class="score"><b>${fmt(total)}</b><small>/ 40 avg.</small></div></div>
+      <div class="mini-rings">${av.map(miniRing).join("")}</div>
+      <div class="mini-labels"><span>Fund.</span><span>Tech.</span><span>Comm.</span><span>Soft</span></div>
+      ${av.map((v,i)=>`<div class="progress-row"><span>${["Fundamental","Technical","Communication","Soft & Life"][i]}</span><div class="progress"><i class="${scoreColor(v)}" style="width:${Math.max(0,Math.min(100,v*10))}%"></i></div><b>${fmt(v)}</b></div>`).join("")}
+      <div class="card-foot"><span>High scores <b>${rs.filter(r=>n(r.total)>=32).length}</b></span><span>TA <b>${rs.filter(r=>r.role==="TA").length}</b></span></div>
+    </div>`;
+  }).join("");
+  window._groups=groups;
+}
+
+function showDetail(i){
+  const [name,rs]=(window._groups||[])[i]||[];
+  if(!rs)return;
+  const vals=[avg(rs.map(r=>n(r.fundamental))),avg(rs.map(r=>n(r.technical))),avg(rs.map(r=>n(r.communication))),avg(rs.map(r=>n(r.soft)))];
+  const d=$("detail");
+  d.classList.add("open");
+  d.innerHTML=`<div class="detail-head"><div><h3>${esc(name)}</h3><div class="meta">${rs.length} filtered evaluations</div></div><div class="close" onclick="document.getElementById('detail').classList.remove('open');event.stopPropagation()">CLOSE ✕</div></div>
+  <div class="detail-grid">${["Fundamental","Core / Technical","Communication","Soft & Life Skills"].map((x,i)=>`<div class="detail-metric"><label>${x}</label><b>${fmt(vals[i])} / 10</b></div>`).join("")}</div>`;
+  d.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+
+function renderCharts(data){
+  const av=[
+    avg(data.map(r=>n(r.fundamental))),
+    avg(data.map(r=>n(r.technical))),
+    avg(data.map(r=>n(r.communication))),
+    avg(data.map(r=>n(r.soft)))
+  ];
+  if(charts.category)charts.category.destroy();
+  charts.category=new Chart($("categoryChart"),{
+    type:"bar",
+    data:{labels:["Fundamental","Core / Technical","Communication","Soft & Life Skills"],datasets:[{label:"Average / 10",data:av,borderWidth:1}]},
+    options:{responsive:true,maintainAspectRatio:false,scales:{y:{min:0,max:10,grid:{color:"rgba(237,234,227,.08)"},ticks:{color:"#9CA6B8"}},x:{grid:{display:false},ticks:{color:"#9CA6B8"}}},plugins:{legend:{labels:{color:"#9CA6B8"}}}}
+  });
+
+  const buckets=[0,0,0,0,0,0,0,0,0];
+  data.forEach(r=>{const t=Math.max(0,Math.min(40,Math.round(n(r.total)))); buckets[Math.min(8,Math.floor(t/5))]++;});
+  if(charts.distribution)charts.distribution.destroy();
+  charts.distribution=new Chart($("distributionChart"),{
+    type:"doughnut",
+    data:{labels:["0–4","5–9","10–14","15–19","20–24","25–29","30–34","35–39","40"],datasets:[{data:buckets,borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{color:"#9CA6B8",font:{size:10},boxWidth:10}}}}
+  });
+}
+
+function renderTable(data){
+  const q=$("studentSearch").value.trim().toLowerCase();
+  const sort=$("sort").value;
+  let arr=data.filter(r=>Object.values(r).join(" ").toLowerCase().includes(q));
+  arr.sort((a,b)=>{
+    if(sort==="total-desc")return n(b.total)-n(a.total);
+    if(sort==="total-asc")return n(a.total)-n(b.total);
+    if(sort==="name")return String(a.student).localeCompare(String(b.student));
+    return String(b.date).localeCompare(String(a.date));
+  });
+  $("tbody").innerHTML=arr.slice(0,500).map((r,i)=>`
+    <tr onclick="openRow(${i})">
+      <td class="student">${esc(r.student||"—")}</td><td>${esc(r.uid||"—")}</td><td>${esc(r.programme||"—")}</td>
+      <td>${esc(r.semester||"—")}</td><td>${esc(r.section||"—")}</td><td>${esc(r.course||"—")}</td>
+      <td>${esc(r.mentor||"—")}</td><td><span class="badge ${r.role==="TA"?"ta":"member"}">${esc(r.role||"—")}</span></td>
+      <td>${fmt(r.fundamental)}</td><td>${fmt(r.technical)}</td><td>${fmt(r.communication)}</td><td>${fmt(r.soft)}</td>
+      <td class="total ${scoreClass(n(r.total))}">${fmt(r.total)}</td>
+    </tr>`).join("");
+  $("empty").style.display=arr.length?"none":"block";
+  window._tableRows=arr.slice(0,500);
+}
+
+function openRow(i){
+  const r=(window._tableRows||[])[i]; if(!r)return;
+  const d=$("detail"); d.classList.add("open");
+  d.innerHTML=`<div class="detail-head"><div><h3>${esc(r.student||"Student")}</h3><div class="meta">${esc(r.uid)} · ${esc(r.course)} · ${esc(r.mentor||"Mentor not recorded")}</div></div><div class="close" onclick="document.getElementById('detail').classList.remove('open');event.stopPropagation()">CLOSE ✕</div></div>
+  <div class="detail-grid">
+    <div class="detail-metric"><label>Fundamental</label><b>${fmt(r.fundamental)} / 10</b></div>
+    <div class="detail-metric"><label>Core / Technical</label><b>${fmt(r.technical)} / 10</b></div>
+    <div class="detail-metric"><label>Communication</label><b>${fmt(r.communication)} / 10</b></div>
+    <div class="detail-metric"><label>Soft & Life Skills</label><b>${fmt(r.soft)} / 10</b></div>
+  </div>`;
+  d.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+const $ = id => document.getElementById(id);
+const fields = [
+    "programme",
+    "semester",
+    "section",
+    "course",
+    "mentor",
+    "role"
+];
+function render(){
+    
+  const data=getFiltered();
+  $("minScoreText").textContent=$("scoreRange").value;
+  $("count").textContent=`Showing ${data.length.toLocaleString()} of ${records.length.toLocaleString()} workbook records`;
+  renderHero(data); renderCards(data); renderCharts(data); renderTable(data);
+}
+
+fields.forEach(id=>$(id).addEventListener("change",render));
+$("scoreRange").addEventListener("input",render);
+$("studentSearch").addEventListener("input",render);
+$("sort").addEventListener("change",render);
+
+$("reset").addEventListener("click",()=>{
+  fields.forEach(id=>$(id).value="ALL");
+  $("scoreRange").value=0; $("studentSearch").value=""; $("sort").value="total-desc"; render();
+});
+
+$("fileInput").addEventListener("change",async e=>{
+  const file=e.target.files?.[0]; if(!file)return;
+  $("status").textContent="Reading workbook…";
+  try{
+    const buf=await file.arrayBuffer();
+    const book=XLSX.read(buf,{type:"array",cellDates:true});
+    const sheet=book.Sheets["Consolidated"] || book.Sheets[book.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(sheet,{defval:""});
+    records=rows.map(r=>({
+      sr:String(r["Sr. No."]??""),
+      school:String(r["School Name"]??"").trim(),
+      programme:String(r["Programme Name"]??"").trim(),
+      semester:String(r["Semester"]??"").trim(),
+      section:String(r["Section"]??"").trim(),
+      course:String(r["Course Name"]??"").trim(),
+      mentor:String(r["Mentor Name"]??"").trim(),
+      student:String(r["Student Name"]??"").trim(),
+      uid:String(r["UID"]??"").trim(),
+      role:String(r["TA/Group Member"]??"").trim(),
+      group:String(r["TA Group ID"]??"").trim(),
+      date:String(r["Date"]??"").trim(),
+      fundamental:n(r["Fundamental\n(10)"]),
+      technical:n(r["Core/Technical \n(10)"]),
+      communication:n(r["Communication \n(10) "]),
+      soft:n(r["Soft & Life Skills\n(10)"]),
+      total:n(r["Total (40)"])
+    }));
+    populateFilters();
+    $("status").textContent=`Loaded ${records.length.toLocaleString()} records from ${file.name}`;
+    render();
+  }catch(err){
+    console.error(err); $("status").textContent="Could not read the selected workbook.";
+  }
+});
+
+populateFilters();
+render();
+</script>
+</body>
+</html>
